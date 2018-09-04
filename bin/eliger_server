@@ -1,0 +1,7 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/..')
+
+from eliger import server
+
+if __name__ == '__main__':
+    server.main()

@@ -1,0 +1,6 @@
+{
+"tcpPort": 8000,
+"httpPort": 8080,
+"telegram.token": "xxxx",
+"telegram.valid_chat_ids": [11111]
+}
