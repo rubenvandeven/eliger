@@ -29,10 +29,10 @@ The three commands to set the alarm status (on/off/home) can quickly be sent tro
 
 ## Start the server
 
-Setup your computer as WiFi hotspot (I use a [rpi with hostapd](https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md) ) en use iptables to redirect traffic:
+Setup your computer as WiFi hotspot (I use a [rpi with hostapd](https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md) ) and use iptables to redirect traffic. Since we use a bridged interface, physdev module is needed to [capture the traffic](http://bwachter.lart.info/linux/bridges.html):
 
-```
-sudo iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 8400 -j REDIRECT --to-port 8000
+```bash
+sudo iptables -t nat -A PREROUTING -m physdev --physdev-in wlan0 -p tcp --dport 8400 -j REDIRECT --to-port 8000
 ```
 
 Copy the `eliger-config.example.json` to `eliger-config.json` and edit for your needs.
