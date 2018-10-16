@@ -48,17 +48,49 @@ class Alarm(object):
         if(len(self.eventLog) > 20):
             self.eventLog.pop(0)
 
-        texts = {
-            "4" : "_Lost mainline power_",
-            "5" : "_Mainline power restored_",
-            "12-1" : "_Enable alarm using remote_",
-            "13-1" : "_Alarm in Home mode_",
-            "14-1" : "_Disable alarm using remote_",
-            "15-1" : "*SOS*",
-            "17-1" : "*Burglar alert!!*", # TODO make sure this repeatedly sends until alarm is disabled
+        if "-" in msg:
+            pos = msg.index("-")
+            signalCode = msg[:pos]
+            deviceCode = msg[pos+1:]
+        else:
+            signalCode = msg
+            deviceCode = None
+
+
+        codes = {
+            "4" : {
+                "text": "_Lost mainline power_",
+                "device": None,
+            },
+            "5" : {
+                "text": "_Mainline power restored_",
+                "device": None,
+            },
+            "12" : {
+                "text": "_Enable alarm using remote_",
+                "device": "remote",
+            },
+            "13" : {
+                "text": "_Alarm in Home mode_",
+                "device": "remote",
+            },
+            "14" : {
+                "text": "_Disable alarm using remote_",
+                "device": "remote",
+            },
+            "15" : {
+                "text":  "*SOS*",
+                "device": "remote",
+            },
+            "17" : {
+                "text": "*Burglar alert!!*", # TODO make sure this repeatedly sends until alarm is disabled
+                "device": "zone",
+            },
         }
-        if msg in texts:
-            text = texts[msg]
+        if signalCode in codes:
+            text = codes[signalCode]['text']
+            if codes[signalCode] != None:
+                text += " from " + codes[signalCode]['device'] + " " + deviceCode
         else:
             text = msg
 

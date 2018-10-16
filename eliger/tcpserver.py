@@ -6,9 +6,11 @@ import json
 
 class AlarmServer(TCPServer):
     def set_alarm_instance(self, alarm):
+        # alarm: model/Alarm
         self.alarm = alarm
-        
+
     def set_config(self, config):
+        # config: config/Config
         self.config = config
 
     async def handle_stream(self, stream, address):
@@ -46,7 +48,7 @@ class AlarmServer(TCPServer):
                     self.alarm.setConfig2(msg.data['msg'])
                 if msg.data['sg_status'] == "8":
                     print("! alarm status has changed")
-                    self.alarm.triggerEvent("Alarm status has changed by {}".format(responseTriggererName))
+                    self.alarm.triggerEvent("Alarm status has been changed by {}".format(responseTriggererName))
                     # self.alarm.status =
 
                 if 'sg_warn' in msg.data['msg']:

@@ -107,14 +107,14 @@ class Bot(object):
             return False
 
         print("= Command On in {}".format(update.message.chat_id))
-        self.alarm.queueRequest(self.alarm.requestStatusChange(1))
+        self.alarm.queueRequest(self.alarm.requestStatusChange(1), name=update.message.from_user.first_name)
 
     def handleOff(self, bot, update):
         if not self.validateChat(bot, update):
             return False
 
         print("= Command Off in {}".format(update.message.chat_id))
-        self.alarm.queueRequest(self.alarm.requestStatusChange(0))
+        self.alarm.queueRequest(self.alarm.requestStatusChange(0), name=update.message.from_user.first_name)
 
     def handleHome(self, bot, update):
         if not self.validateChat(bot, update):
@@ -158,7 +158,7 @@ class Bot(object):
 
             req = "{{\"sg_svle\":\"{}\"}}".format(value)
             update.message.reply_text("Send: {}".format(req))
-            self.alarm.queueRequest(req)
+            self.alarm.queueRequest(req, name=update.message.from_user.first_name)
 
     def handleCustom(self, bot, update, args):
         if not self.validateChat(bot, update):
@@ -169,8 +169,8 @@ class Bot(object):
             update.message.reply_text("Requires some code")
 
         cmd = " ".join(args)
-        update.message.reply_text("Send: {}".format(cmd))
-        self.alarm.queueRequest(cmd)
+        update.message.reply_text("Send to Box: {}".format(cmd))
+        self.alarm.queueRequest(cmd, name=update.message.from_user.first_name)
 
     def addChatId(self, chat_id):
         if chat_id not in self.chat_ids:
