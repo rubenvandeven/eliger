@@ -1,6 +1,9 @@
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 import telegram
-
+import json
+from io import BytesIO
+import requests
+from requests.auth import HTTPDigestAuth
 
 class Bot(object):
     """docstring for Bot."""
@@ -16,7 +19,7 @@ class Bot(object):
         self.chat_ids = config.get('telegram.chat_ids', [])
         self.valid_chat_ids = config.get('telegram.valid_chat_ids', [])
 
-        self.updater = Updater(self.token)
+        self.updater = Updater(self.token, use_context=False)
         self.updater.dispatcher.add_handler(CommandHandler('start', self.handleStart))
         self.updater.dispatcher.add_handler(CommandHandler('help', self.handleHelp))
         self.updater.dispatcher.add_handler(CommandHandler('settings', self.handleSettings))
@@ -28,6 +31,8 @@ class Bot(object):
         self.updater.dispatcher.add_handler(CommandHandler('custom', self.handleCustom, pass_args=True))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.inlineCallbackQuery))
         self.updater.dispatcher.add_handler(CommandHandler('grant', self.handleGrant, pass_args=True))
+        self.updater.dispatcher.add_handler(CommandHandler('config', self.handleConfig, pass_args=True))
+        self.updater.dispatcher.add_handler(CommandHandler('images', self.handleImages))
         self.updater.start_polling()
 
     def start(self):
@@ -40,7 +45,7 @@ class Bot(object):
         self.broadcastMessage("Alarm is now *{}*".format(status), parse_mode=telegram.ParseMode.MARKDOWN)
 
     def notifyWarning(self, msg):
-        self.broadcastMessage("{}".format(msg), parse_mode=telegram.ParseMode.MARKDOWN)
+        self.broadcastMessage("{}".format(msg), parse_mode=telegram.ParseMode.MARKDOWN, include_images=True)
 
     def validateChat(self, bot, update):
         print("= message in {}".format(update.message.chat_id))
@@ -58,9 +63,29 @@ class Bot(object):
 
         return True
 
-    def broadcastMessage(self, msg, parse_mode=None, reply_markup=None):
+    def broadcastMessage(self, msg, parse_mode=None, reply_markup=None, include_images=False):
         for chat_id in self.valid_chat_ids:
             self.updater.bot.send_message(chat_id=chat_id, text=msg, parse_mode=parse_mode, reply_markup=reply_markup)
+        
+        if include_images:
+            cameras = self.config.get('cameras', [])
+            print("= Send warning images for {} cameras".format(len(cameras)))
+            media = []
+            for camera in cameras:
+                try:
+                    r = requests.get(
+                        camera['url'],
+                        auth=HTTPDigestAuth(camera['auth'][0], camera['auth'][1])
+                        )
+                    fp = BytesIO(r.content)
+                    media.append(telegram.InputMediaPhoto(fp))
+                except Exception as e:
+                    print("error fetching for camera: {}".format(camera['url']))
+                    print(e)
+
+            if len(media) > 1:
+                for chat_id in self.valid_chat_ids:
+                    self.updater.bot.send_media_group(chat_id=chat_id, media=media, parse_mode=parse_mode)
 
     def inlineCallbackQuery(self, bot, update):
         query = update.callback_query
@@ -79,14 +104,15 @@ class Bot(object):
         if not self.validateChat(bot, update):
             return False
 
-        keyboard = telegram.ReplyKeyboardMarkup([["/off","/home","/on"]], resize_keyboard=True)
+        keyboard = telegram.ReplyKeyboardMarkup([["/off","/home","/on", "/images"]], resize_keyboard=True)
         update.message.reply_text("Control the alarm", reply_markup=keyboard)
 
     def handleHelp(self, bot, update):
         if not self.validateChat(bot, update):
             return False
-
-        update.message.reply_text("Send command /on or /off to change alarm status.")
+        
+        keyboard = telegram.ReplyKeyboardMarkup([["/off","/home","/on", "/images"]], resize_keyboard=True)
+        update.message.reply_text("Send command /on or /off to change alarm status.", reply_markup=keyboard)
 
 
     def handleSettings(self, bot, update):
@@ -130,6 +156,31 @@ class Bot(object):
         print("= Command Status in {}".format(update.message.chat_id))
 
         update.message.reply_text("Alarm is {}".format(self.alarm.statusName))
+
+    def handleImages(self, bot, update):
+        if not self.validateChat(bot, update):
+            return False
+
+        cameras = self.config.get('cameras', [])
+        print("= Command Images in {} for {} cameras".format(update.message.chat_id, len(cameras)))
+
+        msg = update.message.reply_text("fetching images....")
+        media = []
+        for camera in cameras:
+            try:
+                r = requests.get(
+                    camera['url'],
+                    auth=HTTPDigestAuth(camera['auth'][0], camera['auth'][1])
+                    )
+                fp = BytesIO(r.content)
+                media.append(telegram.InputMediaPhoto(fp))
+            except Exception as e:
+                print("error fetching for camera: {}".format(camera['url']))
+                print(e)
+        
+        if len(media):
+            update.message.reply_media_group(media)
+            msg.delete()
 
     def handleSiren(self,bot,update, args):
         if not self.validateChat(bot, update):
@@ -199,3 +250,8 @@ class Bot(object):
 
         for arg in args:
             msg = self.grant(chat_id, update.message.from_user.first_name)
+
+    def handleConfig(self, bot, update, args):
+        if not self.validateChat(bot, update):
+            return False
+        update.message.reply_text(json.dumps(self.alarm.__dict__, indent=2))
